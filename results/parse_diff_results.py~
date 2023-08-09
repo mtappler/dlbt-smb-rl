@@ -1,0 +1,90 @@
+import json
+from scipy.stats import fisher_exact, chi2_contingency
+file_name = "1-4/test_result_1-4_20k.txt"
+import scipy.stats 
+import numpy as np
+from scipy.stats import binom
+import matplotlib.pyplot as plt
+
+from collections import defaultdict
+import matplotlib.pyplot as plt
+import statistics
+from math import sqrt
+
+invert = False
+
+
+results = []
+with open(file_name) as fp:
+    lines = fp.readlines()
+    sut_names = lines[0]
+    
+    lines = lines[1:]
+    for i in range(len(lines)//2):
+        res_line = lines[2*i]
+        time_line = lines[2*i+1]
+        split_res = res_line.replace("(","").replace(")","").split(",")
+        tries = split_res[0]
+        f1 = int(split_res[1])
+        n1 = int(split_res[2])
+        f2 = int(split_res[3])
+        n2 = int(split_res[4])
+        results.append((tries,f1,n1,f2,n2))
+    sut_names = sut_names.replace("(","").replace("'","").replace(")","").split(",")
+    sut1 = sut_names[0]
+    sut2 = sut_names[0]
+
+            
+table =  "\\begin{tabular}{c|c|c|c}\n"
+table += f" & TC & Test-Case Runs & DQfD & DDQ \\\\ \hline\n"
+for i,r in enumerate(results):
+    (tries,f1,n1,f2,n2) = r
+    tries = int(tries)
+    if tries < 5000:
+        tries += 1
+    if tries == 5001:
+        tries -= 1
+        
+    if invert:
+        table += f" & TC {i+1} & {n1+n2} of {tries} & {f2/n2} & {f1/n1}  \\\\ \hline \n"
+    else:
+        table += f" & TC {i+1} & {n1+n2} of {tries} & {f1/n1} & {f2/n2}  \\\\ \hline \n"
+    
+print(table)
+    
+def plot_confidence_interval(x, label,mean, n, z=1.96, color='#2187bb', horizontal_line_width=0.25):
+    #mean = statistics.mean(values)
+    #stdev = statistics.stdev(values)
+    
+    confidence_interval = z * sqrt((mean * (1-mean)) / n) 
+    lower = mean - confidence_interval
+    upper = mean + confidence_interval
+         
+    left = x - horizontal_line_width / 2
+    top = mean - confidence_interval
+    right = x + horizontal_line_width / 2
+
+    bottom = mean + confidence_interval
+    plt.plot([x, x], [top, bottom], color=color, label=label)
+    plt.plot([left, right], [top, top], color=color)
+    plt.plot([left, right], [bottom, bottom], color=color)
+    #plt.plot(x, mean, 'o', color='#f44336')
+    plt.plot(x, mean, 'o', color='#f44336')
+    
+
+    return mean, confidence_interval
+
+ticks = list(range(len(results)))
+xticks_str = list(map(lambda t : f"TC {t+1}",ticks))
+for i,r in enumerate(results):    
+    (tries,f1,n1,f2,n2) = r
+
+    plt.xticks(ticks, xticks_str)
+    plt.title('Confidence Interval')
+    if invert:
+        plot_confidence_interval(i-0.15,"DQfD", f2/n2, n1, color='#041f80')
+        plot_confidence_interval(i+0.15, "DDQ", f1/n1, n2, color='#048010')
+    else:
+        plot_confidence_interval(i-0.15, "DQfD", f1/n1, n1, color='#041f80')
+        plot_confidence_interval(i+0.15,"DDQ", f2/n2, n2, color='#048010')
+plt.show()
